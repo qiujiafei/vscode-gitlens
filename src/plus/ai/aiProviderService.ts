@@ -508,9 +508,9 @@ export class AIProviderService implements AIService, Disposable {
 		return this.enabled && this.orgEnabled;
 	}
 
-	/** Whether the user has enabled AI features (`gitlens.ai.enabled` setting). */
+	/** AI features are disabled in the local build. */
 	get enabled(): boolean {
-		return configuration.get('ai.enabled', undefined, true);
+		return false;
 	}
 
 	/** Whether the org permits AI (GitKraken admin setting). Fail-open: defaults true until org settings load. */
@@ -910,6 +910,8 @@ export class AIProviderService implements AIService, Disposable {
 	}
 
 	async getModels(providerId?: AIProviders): Promise<readonly AIModel[]> {
+		if (!this.allowed) return [];
+
 		const loadModels = async (id: AIProviders, type: Lazy<Promise<AIProviderConstructor>>) => {
 			return type.value.then(async t => {
 				const p = new t(this.createAIProviderContext(id));
@@ -993,6 +995,8 @@ export class AIProviderService implements AIService, Disposable {
 		options?: { force?: boolean; silent?: boolean; scope?: AIModelScope },
 		source?: Source,
 	): Promise<AIModel | undefined> {
+		if (!this.allowed) return undefined;
+
 		const scope = options?.scope;
 		const cacheKey: AIModelScope | 'global' = scope ?? 'global';
 
@@ -1183,6 +1187,7 @@ export class AIProviderService implements AIService, Disposable {
 	@debug()
 	async getUsage(options?: { force?: boolean }): Promise<AIUsageLimits | undefined> {
 		const scope = getScopedLogger();
+		if (!this.allowed) return undefined;
 
 		const subscription = await this.container.subscription.getSubscription(true);
 		if (subscription.account == null) {
@@ -1456,6 +1461,11 @@ export class AIProviderService implements AIService, Disposable {
 		},
 	): Promise<AIProviderResult<void> | 'cancelled' | undefined> {
 		const scope = getScopedLogger();
+		if (!this.allowed) {
+			options?.generating?.cancel();
+			return 'cancelled';
+		}
+
 		if (model != null) {
 			scope?.addExitInfo(`model: ${model.provider.id}/${model.id}`);
 		}
@@ -2323,6 +2333,8 @@ export class AIProviderService implements AIService, Disposable {
 		const scope = getScopedLogger();
 
 		const template = getLocalPromptTemplate(templateType, model);
+		if (!this.allowed) return template;
+
 		const templateId = template?.id ?? templateType;
 
 		return this._promptTemplates.getOrCreate(templateId, async cancellable => {

@@ -210,6 +210,8 @@ export class IntegrationService implements Disposable, RepositoryResolutionConte
 		connect?: { integrationIds: SupportedCloudIntegrationIds[]; skipIfConnected?: boolean; skipPreSync?: boolean },
 		source?: Source,
 	): Promise<boolean> {
+		if (this.ctx.config.isIntegrationsEnabled?.() === false) return false;
+
 		const scope = getScopedLogger();
 		const integrationIds = connect?.integrationIds;
 		this.ctx.hooks?.connection?.onStarted?.({ integrationIds: integrationIds }, source);
@@ -1524,6 +1526,8 @@ export class IntegrationService implements Disposable, RepositoryResolutionConte
 
 	@debug()
 	async manageCloudIntegrations(source: Source | undefined): Promise<void> {
+		if (this.ctx.config.isIntegrationsEnabled?.() === false) return;
+
 		this.ctx.hooks?.connection?.onManaged?.(source);
 
 		// The host owns the GK-Dev manage interaction (sign-in if needed, open settings, wait for the user
@@ -1777,6 +1781,8 @@ export class IntegrationService implements Disposable, RepositoryResolutionConte
 	@gate()
 	@trace()
 	private async syncCloudIntegrations(forceConnect: boolean): Promise<Set<IntegrationIds> | undefined> {
+		if (this.ctx.config.isIntegrationsEnabled?.() === false) return new Set();
+
 		const scope = getScopedLogger();
 		const connectedIntegrations = new Set<IntegrationIds>();
 		const domainsById = new Map<IntegrationIds, Set<string>>();

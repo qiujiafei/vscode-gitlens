@@ -19,6 +19,29 @@ function cloudSession(id: string): ProviderAuthenticationSession {
 }
 
 suite('createIntegrationManager — vertical-slice smoke', () => {
+	test('disabled integrations do not connect, manage, or synchronize with the cloud', async () => {
+		const runtime = createFakeRuntime();
+		runtime.config.isIntegrationsEnabled = () => false;
+		runtime.account.getAccount = async () => {
+			throw new Error('unexpected account lookup');
+		};
+		runtime.account.connect = async () => {
+			throw new Error('unexpected connection');
+		};
+		runtime.account.openManagement = async () => {
+			throw new Error('unexpected management');
+		};
+		runtime.account.fetchGkApi = async () => {
+			throw new Error('unexpected cloud request');
+		};
+		const manager = createIntegrationManager(runtime);
+
+		assert.equal(await manager.connectCloudIntegrations(), false);
+		await manager.manageCloudIntegrations(undefined);
+		await manager.refreshConnections();
+		manager.dispose();
+	});
+
 	test('constructs and disposes cleanly with a fake runtime', () => {
 		const runtime = createFakeRuntime();
 		const manager = createIntegrationManager(runtime);

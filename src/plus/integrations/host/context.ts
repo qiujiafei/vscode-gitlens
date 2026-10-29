@@ -45,7 +45,12 @@ export function createIntegrationServiceContext(
 	const disposables: VsCodeDisposable[] = [];
 	const ctx: IntegrationServiceContext = {
 		storage: createStorageAdapter(container),
-		account: createAccountAdapter(container, connection, disposables),
+		account: {
+			...createAccountAdapter(container, connection, disposables),
+			fetchGkApi: () => Promise.reject(new Error('Cloud integrations are disabled')),
+			connect: () => Promise.resolve(false),
+			openManagement: () => Promise.resolve(false),
+		},
 		config: createConfigAdapter(disposables),
 		http: createHttpAdapter(container),
 		cache: container.cache,
@@ -98,7 +103,7 @@ function createConfigAdapter(disposables: VsCodeDisposable[]): ConfigProvider {
 	);
 
 	return {
-		isIntegrationsEnabled: () => configuration.get('integrations.enabled', undefined, true),
+		isIntegrationsEnabled: () => false,
 		getLaunchpadOptions: () => ({
 			queryLimit: configuration.get('launchpad.experimental.queryLimit'),
 			ignoredRepositories: configuration.get('launchpad.ignoredRepositories'),

@@ -5,7 +5,7 @@ import type {
 	Event,
 } from 'vscode';
 import { Disposable, EventEmitter, l10n, window } from 'vscode';
-import { isCancellationError } from '@gitlens/utils/cancellation.js';
+import { CancellationError, isCancellationError } from '@gitlens/utils/cancellation.js';
 import { uuid } from '@gitlens/utils/crypto.js';
 import { trace } from '@gitlens/utils/decorators/log.js';
 import { getLoggableName, Logger } from '@gitlens/utils/logger.js';
@@ -49,16 +49,17 @@ export class AccountAuthenticationProvider implements AuthenticationProvider, Di
 	constructor(
 		private readonly container: Container,
 		connection: ServerConnection,
+		private readonly local = false,
 	) {
 		this._authConnection = new AuthenticationConnection(container, connection);
 
 		// Contains the current state of the sessions we have available.
-		this._sessionsPromise = this.getSessionsFromStorage();
+		this._sessionsPromise = local ? Promise.resolve([]) : this.getSessionsFromStorage();
 
 		this._disposable = Disposable.from(
 			this._onDidChangeSessions,
 			this._authConnection,
-			this.container.storage.onDidChangeSecrets(() => this.checkForUpdates()),
+			...(local ? [] : [this.container.storage.onDidChangeSecrets(() => this.checkForUpdates())]),
 		);
 	}
 
@@ -85,6 +86,8 @@ export class AccountAuthenticationProvider implements AuthenticationProvider, Di
 
 	@trace()
 	public async createSession(scopes: string[]): Promise<AuthenticationSession> {
+		if (this.local) throw new CancellationError();
+
 		const scope = getScopedLogger();
 
 		const options = this._optionsByScope?.get(getScopesKey(scopes));
@@ -247,6 +250,8 @@ export class AccountAuthenticationProvider implements AuthenticationProvider, Di
 		scopes: string[],
 		createIfNeeded: boolean,
 	): Promise<AuthenticationSession | undefined> {
+		if (this.local) return undefined;
+
 		const session = (await this.getSessions(scopes))[0];
 		if (session != null) {
 			return session;

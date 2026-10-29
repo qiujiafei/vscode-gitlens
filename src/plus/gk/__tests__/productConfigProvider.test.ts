@@ -1,11 +1,13 @@
 /* oxlint-disable no-template-curly-in-string -- fixture/authored bullets contain the literal `${aiCredits}` placeholder token */
 
 import * as assert from 'assert';
+import { SubscriptionState } from '../../../constants.subscription.js';
 import { Container } from '../../../container.js';
 import type { PlansContent } from '../models/plans.js';
 import { defaultPlansContent } from '../models/plans.js';
 import type { Config } from '../productConfigProvider.js';
-import { parseProductConfig } from '../productConfigProvider.js';
+import { parseProductConfig, ProductConfigProvider } from '../productConfigProvider.js';
+import type { ServerConnection } from '../serverConnection.js';
 
 /**
  * DO NOT REMOVE — this reference is what keeps the import above from being elided, and the import is
@@ -19,6 +21,13 @@ import { parseProductConfig } from '../productConfigProvider.js';
 void Container;
 
 suite('ProductConfigProvider Test Suite', () => {
+	test('local configuration uses built-in plans without accessing a server or promotions', async () => {
+		const provider = new ProductConfigProvider({} as Container, {} as ServerConnection, true);
+
+		assert.deepStrictEqual(await provider.getPlans(), defaultPlansContent);
+		assert.strictEqual(await provider.getApplicablePromo(SubscriptionState.Community, 'pro'), undefined);
+	});
+
 	suite('parseProductConfig — plans', () => {
 		test('a malformed plans block does not drop the rest of the config', () => {
 			const config: Config | undefined = parseProductConfig({

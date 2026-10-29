@@ -103,8 +103,10 @@ const fallbackConfig: Config = {
 export class ProductConfigProvider {
 	private readonly _lazyConfig: Lazy<Promise<Config>>;
 
-	constructor(container: Container, connection: ServerConnection) {
+	constructor(container: Container, connection: ServerConnection, local = false) {
 		this._lazyConfig = lazy(async () => {
+			if (local) return { ...fallbackConfig, promos: [] };
+
 			using scope = maybeStartScopedLogger(`${getLoggableName(this)}.load`);
 
 			let data;

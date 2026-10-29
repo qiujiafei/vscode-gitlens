@@ -32,7 +32,6 @@ import { extensionPrefix } from './constants.js';
 import { MarkdownContentProvider } from './documents/markdown.js';
 import { EventBus } from './eventBus.js';
 import type { FeatureFlagService } from './featureFlags/featureFlagService.js';
-import { ConfigCatFeatureFlagService } from './featureFlags/featureFlagService.js';
 import { GitFileSystemProvider } from './git/fsProvider.js';
 import { GitHealthService } from './git/gitHealthService.js';
 import { GitOperationOriginTracker } from './git/gitOperationOriginTracker.js';
@@ -269,7 +268,7 @@ export class Container {
 		this._disposables.push((this._connection = new ServerConnection(this, this._urls)));
 
 		this._disposables.push(
-			(this._accountAuthentication = new AccountAuthenticationProvider(this, this._connection)),
+			(this._accountAuthentication = new AccountAuthenticationProvider(this, this._connection, true)),
 		);
 		this._disposables.push((this._uri = new UriService(this)));
 		this._disposables.push((this._subscription = new SubscriptionService(this, this._connection, previousVersion)));
@@ -356,7 +355,7 @@ export class Container {
 
 		// Both are Node-only (undefined on browser builds); the MCP service takes the CLI service as a
 		// dependency so it can wire its install/IPC listeners at construction.
-		this._gkCliService = getGkCliService(this);
+		this._gkCliService = this.ai.allowed ? getGkCliService(this) : undefined;
 		if (this._gkCliService != null) {
 			this._disposables.push(this._gkCliService);
 			this._gkMcpService = getGkMcpService(this, this._gkCliService);
@@ -530,9 +529,13 @@ export class Container {
 
 	private _featureFlags: FeatureFlagService | undefined;
 	get featureFlags(): FeatureFlagService {
-		if (this._featureFlags == null) {
-			this._disposables.push((this._featureFlags = new ConfigCatFeatureFlagService(this)));
-		}
+		this._featureFlags ??= {
+			whenReady: Promise.resolve(),
+			hasEverFetched: false,
+			getFlag: (_key, defaultValue) => defaultValue,
+			getAllFlags: () => ({}),
+			dispose: () => {},
+		};
 		return this._featureFlags;
 	}
 	private _drafts: DraftService | undefined;
@@ -739,7 +742,7 @@ export class Container {
 
 	private _productConfig: ProductConfigProvider | undefined;
 	get productConfig(): ProductConfigProvider {
-		this._productConfig ??= new ProductConfigProvider(this, this._connection);
+		this._productConfig ??= new ProductConfigProvider(this, this._connection, true);
 		return this._productConfig;
 	}
 

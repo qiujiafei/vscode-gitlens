@@ -160,9 +160,7 @@ export class SubscriptionService implements Disposable {
 			container.uri.onDidReceiveLoginUri(this.onLoginUriReceived, this),
 		);
 
-		const subscription = this.getStoredSubscription();
-		this.changeSubscription(subscription, undefined, { silent: true });
-		setTimeout(() => void this.ensureSession(false, undefined), 10000);
+		this.changeSubscription(undefined, undefined, { silent: true, store: false });
 
 		for (const feature of featurePreviews) {
 			this.armFeaturePreviewExpiryTimer(this.getStoredFeaturePreview(feature));
@@ -398,12 +396,8 @@ export class SubscriptionService implements Disposable {
 		return this.ensureSession(createIfNeeded, undefined);
 	}
 
-	async getSubscription(cached = false): Promise<Subscription> {
-		const promise = this.ensureSession(false, undefined);
-		if (!cached) {
-			void (await promise);
-		}
-		return this._subscription;
+	getSubscription(_cached = false): Promise<Subscription> {
+		return Promise.resolve(this._subscription);
 	}
 
 	@gate()

@@ -405,6 +405,8 @@ export abstract class IntegrationBase<
 	getSession(
 		source: Sources,
 	): ProviderAuthenticationSession | Promise<ProviderAuthenticationSession | undefined> | undefined {
+		if (this.ctx.config.isIntegrationsEnabled?.() === false) return undefined;
+
 		// Served as is even while a transition runs: a forced re-sync keeps the session it is replacing, and a read
 		// meanwhile reads with it rather than waiting on the cloud.
 		if (this._session === undefined) {
